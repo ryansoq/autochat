@@ -3,6 +3,5 @@ __pycache__/
 model_weights.json
 tokenizer.json
 experiments.jsonl
-progress.png
 *.egg-info/
 .venv/
