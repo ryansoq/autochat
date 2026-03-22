@@ -334,8 +334,10 @@ class AdamMixin:
             self._adam_m[name] = np.zeros_like(arr)
             self._adam_v[name] = np.zeros_like(arr)
 
-    def _adam_update(self, name, param, grad, lr, t, beta1=0.9, beta2=0.999, eps=1e-8):
-        """Adam 更新單一參數"""
+    def _adam_update(self, name, param, grad, lr, t, beta1=0.9, beta2=0.999, eps=1e-8, weight_decay=0.01):
+        """AdamW 更新單一參數（decoupled weight decay）"""
+        # AdamW: apply weight decay directly to params (not through gradient)
+        param -= lr * weight_decay * param
         self._adam_m[name] = beta1 * self._adam_m[name] + (1 - beta1) * grad
         self._adam_v[name] = beta2 * self._adam_v[name] + (1 - beta2) * grad**2
         m_hat = self._adam_m[name] / (1 - beta1**t)
