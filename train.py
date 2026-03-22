@@ -1209,7 +1209,7 @@ def train(epochs=500, lr=0.001, time_budget=None):
     prev_loss = float('inf')
     lr_reductions = 0
 
-    warmup_epochs = max(int(epochs * 0.02), 3)  # 短 warmup（~10 epoch）
+    warmup_epochs = 5  # 固定短 warmup，不隨 epochs 數量膨脹
 
     for epoch in range(epochs):
         # === Cosine LR schedule with short warmup ===
