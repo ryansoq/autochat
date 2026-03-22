@@ -965,7 +965,7 @@ class GPTMini:
         self.embedding.backward()
 
         # --- gradient clipping（防止梯度爆炸） ---
-        self._clip_gradients(max_norm=1.0)
+        self._clip_gradients(max_norm=0.5)
 
         # --- update（逐層更新權重） ---
         self.embedding.update(self.lr, self.t)
