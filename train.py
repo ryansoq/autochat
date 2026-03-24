@@ -1286,7 +1286,7 @@ def train(epochs=500, lr=0.001, time_budget=None):
     prev_loss = float('inf')
     lr_reductions = 0
 
-    warmup_epochs = 5  # 固定短 warmup，不隨 epochs 數量膨脹
+    warmup_epochs = 2  # 極短 warmup
 
     # Estimate actual epochs from time budget (for proper cosine schedule)
     expected_epochs = min(epochs, int(time_budget / 7.0)) if time_budget else epochs
