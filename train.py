@@ -279,7 +279,55 @@ TRAINING_DATA = [
 
 
 # =============================================================================
-# UTF-8 Tokenizer（字元級）
+# WordTokenizer — 詞級別的 tokenizer（英文詞+數字串+中文字+標點）
+# =============================================================================
+class WordTokenizer:
+    def __init__(self, texts):
+        all_tokens = set()
+        for t in texts:
+            tokens = self._tokenize(t)
+            all_tokens.update(tokens)
+        self.vocab = sorted(all_tokens)
+        self.token2id = {t: i for i, t in enumerate(self.vocab)}
+        self.id2token = {i: t for i, t in enumerate(self.vocab)}
+        self.vocab_size = len(self.vocab)
+        self.name = "WordTokenizer"
+
+    def _tokenize(self, text):
+        tokens = []
+        i = 0
+        while i < len(text):
+            c = text[i]
+            if c.isascii() and c.isalpha():
+                # 英文單詞
+                j = i + 1
+                while j < len(text) and text[j].isascii() and text[j].isalpha():
+                    j += 1
+                tokens.append(text[i:j])
+                i = j
+            elif c.isdigit():
+                # 數字串
+                j = i + 1
+                while j < len(text) and text[j].isdigit():
+                    j += 1
+                tokens.append(text[i:j])
+                i = j
+            else:
+                # 中文字或標點，一個一個
+                tokens.append(c)
+                i += 1
+        return tokens
+
+    def encode(self, text):
+        tokens = self._tokenize(text)
+        return [self.token2id[t] for t in tokens if t in self.token2id]
+
+    def decode(self, ids):
+        return ''.join(self.id2token.get(i, '?') for i in ids)
+
+
+# =============================================================================
+# CharTokenizer — 保留原版供對比
 # =============================================================================
 class CharTokenizer:
     def __init__(self, texts):
@@ -646,9 +694,16 @@ class TransformerBlockOp(opBase):
         self.ln1 = LayerNormOp(d_model)
         self.mha = MultiHeadAttentionOp(d_model, num_heads)
         self.ln2 = LayerNormOp(d_model)
-        self.ff_w1 = MatmulOp(d_model, d_ff, name='ff_w1')
-        self.gelu = GELUOp()
-        self.ff_w2 = MatmulOp(d_ff, d_model, name='ff_w2')
+
+        # SwiGLU FFN: FFN(x) = (Swish(xW1) ⊙ xW_gate) @ W2
+        # Adjust d_ff for SwiGLU: use 2/3 * d_ff to keep param count similar
+        # (3 matrices of size d_model×d_ff_swiglu instead of 2 matrices)
+        d_ff_swiglu = int(d_ff * 2 // 3)
+        if d_ff_swiglu < 1:
+            d_ff_swiglu = d_ff
+        self.ff_w1 = MatmulOp(d_model, d_ff_swiglu, name='ff_w1')       # for Swish branch
+        self.ff_gate = MatmulOp(d_model, d_ff_swiglu, name='ff_gate')   # gate branch
+        self.ff_w2 = MatmulOp(d_ff_swiglu, d_model, name='ff_w2')       # output projection
 
         # IO
         self.input = None
@@ -656,73 +711,89 @@ class TransformerBlockOp(opBase):
         self.d_output = None
         self.d_input = None
 
+    def _swish(self, x):
+        """Swish activation: x * sigmoid(x)"""
+        sig = 1.0 / (1.0 + np.exp(-np.clip(x, -20, 20)))
+        return x * sig
+
+    def _swish_backward(self, x, d_out):
+        """Backward for Swish"""
+        sig = 1.0 / (1.0 + np.exp(-np.clip(x, -20, 20)))
+        return d_out * (sig + x * sig * (1 - sig))
+
     def forward(self):
         x = self.input
 
         # --- Attention sub-block ---
-        # LN1
         self.ln1.input = x
         self.ln1.forward()
 
-        # Multi-Head Attention
         self.mha.input = self.ln1.output
         self.mha.forward()
 
-        # Residual connection
         x_after_attn = x + self.mha.output
 
-        # --- FFN sub-block ---
-        # LN2
+        # --- SwiGLU FFN sub-block ---
         self.ln2.input = x_after_attn
         self.ln2.forward()
 
-        # FFN: Matmul → GELU → Matmul
+        # SwiGLU: Swish(x @ W1) ⊙ (x @ W_gate) then @ W2
         self.ff_w1.input = self.ln2.output
         self.ff_w1.forward()
+        self._swish_input = self.ff_w1.output.copy()  # cache for backward
+        self._swish_out = self._swish(self.ff_w1.output)
 
-        self.gelu.input = self.ff_w1.output
-        self.gelu.forward()
+        self.ff_gate.input = self.ln2.output
+        self.ff_gate.forward()
+        self._gate_out = self.ff_gate.output
 
-        self.ff_w2.input = self.gelu.output
+        # Element-wise multiply
+        self._gated = self._swish_out * self._gate_out
+
+        self.ff_w2.input = self._gated
         self.ff_w2.forward()
 
         # Residual connection
         self.output = x_after_attn + self.ff_w2.output
 
-        # 存起來供 backward 用
         self._x_after_attn = x_after_attn
 
     def backward(self):
         d_out = self.d_output
 
-        # --- FFN backward（逆序！） ---
-        # Residual: d_out 同時流向 ff_w2 和 x_after_attn
+        # --- SwiGLU FFN backward ---
         self.ff_w2.d_output = d_out
         self.ff_w2.backward()
 
-        self.gelu.d_output = self.ff_w2.d_input
-        self.gelu.backward()
+        d_gated = self.ff_w2.d_input  # [seq, d_ff_swiglu]
 
-        self.ff_w1.d_output = self.gelu.d_input
+        # d_swish_out = d_gated * gate_out
+        d_swish_out = d_gated * self._gate_out
+        # d_gate_out = d_gated * swish_out
+        d_gate_out = d_gated * self._swish_out
+
+        # Swish backward
+        d_ff_w1_out = self._swish_backward(self._swish_input, d_swish_out)
+
+        self.ff_w1.d_output = d_ff_w1_out
         self.ff_w1.backward()
 
-        # LN2 backward
-        self.ln2.d_output = self.ff_w1.d_input
+        self.ff_gate.d_output = d_gate_out
+        self.ff_gate.backward()
+
+        # LN2 backward: sum gradients from both ff_w1 and ff_gate
+        self.ln2.d_output = self.ff_w1.d_input + self.ff_gate.d_input
         self.ln2.backward()
 
-        # Residual: d_x_after_attn = d_out (skip) + d_ln2_input
         d_x_after_attn = d_out + self.ln2.d_input
 
-        # --- Attention backward（逆序！） ---
-        # Residual: d_x_after_attn 同時流向 mha 和 x
+        # --- Attention backward ---
         self.mha.d_output = d_x_after_attn
         self.mha.backward()
 
-        # LN1 backward
         self.ln1.d_output = self.mha.d_input
         self.ln1.backward()
 
-        # Residual: d_input = d_x_after_attn (skip) + d_ln1_input
         self.d_input = d_x_after_attn + self.ln1.d_input
 
     def update(self, lr, t):
@@ -730,6 +801,7 @@ class TransformerBlockOp(opBase):
         self.mha.update(lr, t)
         self.ln2.update(lr, t)
         self.ff_w1.update(lr, t)
+        self.ff_gate.update(lr, t)
         self.ff_w2.update(lr, t)
 
 
@@ -877,7 +949,7 @@ class GPTMini:
             n += block.ln1.gamma.size + block.ln1.beta.size
             n += block.mha.Wq.size + block.mha.Wk.size + block.mha.Wv.size + block.mha.Wo.size
             n += block.ln2.gamma.size + block.ln2.beta.size
-            n += block.ff_w1.weight.size + block.ff_w2.weight.size
+            n += block.ff_w1.weight.size + block.ff_gate.weight.size + block.ff_w2.weight.size
         return n
 
     def _collect_grads(self):
@@ -897,6 +969,7 @@ class GPTMini:
             grads.append(block.ln2._d_gamma)
             grads.append(block.ln2._d_beta)
             grads.append(block.ff_w1._d_weight)
+            grads.append(block.ff_gate._d_weight)
             grads.append(block.ff_w2._d_weight)
         # MLP Head
         grads.append(self.mlp_head.w1._d_weight)
@@ -1119,17 +1192,16 @@ def compute_bpb(loss, tokenizer, texts):
     
     bpb = CE_loss / ln(2) / avg_bytes_per_token
     
-    For char-level tokenizer:
-    - ASCII chars = 1 byte
-    - CJK chars = 3 bytes (UTF-8)
-    - So avg_bytes_per_token depends on the actual character mix
+    For WordTokenizer:
+    - Each token can represent multiple bytes
+    - avg_bytes_per_token = total_bytes / total_tokens
     
     This makes bpb vocab-size-independent, so architecture changes
     (including vocab changes) can be fairly compared.
     """
     total_bytes = sum(len(t.encode('utf-8')) for t in texts)
-    total_chars = sum(len(t) for t in texts)
-    avg_bytes_per_token = total_bytes / total_chars if total_chars > 0 else 1.0
+    total_tokens = sum(len(tokenizer.encode(t)) for t in texts)
+    avg_bytes_per_token = total_bytes / total_tokens if total_tokens > 0 else 1.0
     return loss / math.log(2) / avg_bytes_per_token
 
 
@@ -1145,8 +1217,8 @@ def train(epochs=500, lr=0.001, time_budget=None):
     print()
 
     # Tokenizer
-    tokenizer = CharTokenizer(TRAINING_DATA)
-    print(f"📊 Vocab size: {tokenizer.vocab_size} chars")
+    tokenizer = WordTokenizer(TRAINING_DATA)
+    print(f"📊 Vocab size: {tokenizer.vocab_size} tokens")
     print(f"📝 Training samples: {len(TRAINING_DATA)}")
 
     max_len = max(len(tokenizer.encode(t)) for t in TRAINING_DATA) + 1
@@ -1174,8 +1246,8 @@ def train(epochs=500, lr=0.001, time_budget=None):
 
     # Compute avg_bytes_per_token for bpb
     total_bytes = sum(len(t.encode('utf-8')) for t in TRAINING_DATA)
-    total_chars = sum(len(t) for t in TRAINING_DATA)
-    avg_bpt = total_bytes / total_chars
+    total_tokens = sum(len(tokenizer.encode(t)) for t in TRAINING_DATA)
+    avg_bpt = total_bytes / total_tokens
     print(f"📐 Avg bytes/token: {avg_bpt:.2f} (for bpb calculation)")
     print()
 
@@ -1294,7 +1366,7 @@ def train(epochs=500, lr=0.001, time_budget=None):
     # Save model
     model_dir = os.path.dirname(os.path.abspath(__file__))
     model.save(os.path.join(model_dir, 'model_weights.json'))
-    tok_data = {'vocab': tokenizer.vocab, 'char2id': tokenizer.char2id}
+    tok_data = {'vocab': tokenizer.vocab, 'token2id': tokenizer.token2id}
     with open(os.path.join(model_dir, 'tokenizer.json'), 'w') as f:
         json.dump(tok_data, f, ensure_ascii=False)
     print(f"💾 Model & tokenizer saved")
@@ -1375,12 +1447,12 @@ if __name__ == '__main__':
     if '--test' in sys.argv:
         model_dir = os.path.dirname(os.path.abspath(__file__))
         model = GPTMini.load(os.path.join(model_dir, 'model_weights.json'))
-        tokenizer = CharTokenizer(TRAINING_DATA)
+        tokenizer = WordTokenizer(TRAINING_DATA)
         test_all(model, tokenizer)
     elif '--chat' in sys.argv:
         model_dir = os.path.dirname(os.path.abspath(__file__))
         model = GPTMini.load(os.path.join(model_dir, 'model_weights.json'))
-        tokenizer = CharTokenizer(TRAINING_DATA)
+        tokenizer = WordTokenizer(TRAINING_DATA)
         chat_mode(model, tokenizer)
     elif '--auto' in sys.argv:
         # Autoresearch mode: fixed time budget

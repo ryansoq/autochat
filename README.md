@@ -2,11 +2,11 @@
 
 AI agents running autonomous research on CPU-only GPT training.
 
-![progress](progress.png)
+![progress](progress1.png)
 
 Inspired by [karpathy/autoresearch](https://github.com/karpathy/autoresearch). The idea: give an AI agent a small but real LLM training setup and let it experiment autonomously. It modifies the code, trains for 10 minutes, checks if the result improved, keeps or discards, and repeats.
 
-This is a pure NumPy implementation — no PyTorch, no GPU required. A char-level Transformer trained on Chinese QA pairs, built from scratch with explicit forward/backward/update for every op (matching the C++ [TETF](https://github.com/ryansoq/TETF) framework).
+This is a pure NumPy implementation — no PyTorch, no GPU required. A word-level Transformer trained on Chinese QA pairs, built from scratch with explicit forward/backward/update for every op (matching the C++ [TETF](https://github.com/ryansoq/TETF) framework).
 
 ## How It Works
 
@@ -53,7 +53,7 @@ The agent will read the instructions, modify `train.py`, run training, evaluate,
 
 ## Architecture
 
-Pure NumPy char-level Transformer with explicit ops:
+Pure NumPy word-level Transformer with explicit ops:
 
 ```
 EmbeddingOp (token + positional)
