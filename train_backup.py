@@ -1206,13 +1206,10 @@ def compute_bpb(loss, tokenizer, texts):
 
 
 # Time budget for autoresearch mode (seconds)
-TIME_BUDGET = 20 * 60  # 20 minutes
+TIME_BUDGET = 10 * 60  # 10 minutes
 
 
 def train(epochs=500, lr=0.001, time_budget=None):
-    # Fixed seed for reproducible experiments
-    np.random.seed(42)
-
     print("=" * 60)
     print("🌊 autochat — TETF GPT-1 Mini 自動研究")
     print("   架構：每個 op 獨立 forward/backward/update")
