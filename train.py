@@ -1288,12 +1288,16 @@ def train(epochs=500, lr=0.001, time_budget=None):
 
     warmup_epochs = 5  # 固定短 warmup，不隨 epochs 數量膨脹
 
+    # Estimate actual epochs from time budget (for proper cosine schedule)
+    expected_epochs = min(epochs, int(time_budget / 7.0)) if time_budget else epochs
+
     for epoch in range(epochs):
         # === Cosine LR schedule with short warmup ===
         if epoch < warmup_epochs:
             current_lr = lr * (epoch + 1) / warmup_epochs
         else:
-            progress = (epoch - warmup_epochs) / max(epochs - warmup_epochs, 1)
+            progress = (epoch - warmup_epochs) / max(expected_epochs - warmup_epochs, 1)
+            progress = min(progress, 1.0)  # cap at 1.0
             current_lr = lr * 0.5 * (1 + np.cos(np.pi * progress))
         current_lr = max(current_lr, lr * 0.01)  # 最低不低於 lr 的 1%
 
