@@ -2,7 +2,7 @@
 
 AI agents running autonomous research on CPU-only GPT training.
 
-![progress](progress1.png)
+![progress](progress.png)
 
 Inspired by [karpathy/autoresearch](https://github.com/karpathy/autoresearch). The idea: give an AI agent a small but real LLM training setup and let it experiment autonomously. It modifies the code, trains for 10 minutes, checks if the result improved, keeps or discards, and repeats.
 

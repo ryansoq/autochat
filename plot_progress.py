@@ -27,34 +27,70 @@ def plot():
         import matplotlib.pyplot as plt
     except ImportError:
         print("matplotlib not installed, generating text report instead")
-        print(f"\n{'#':>4} | {'bpb':>8} | {'loss':>8} | {'epochs':>6} | {'time':>6} | timestamp")
-        print("-" * 70)
         for i, exp in enumerate(experiments):
-            print(f"{i+1:4d} | {exp.get('final_bpb', 0):8.4f} | {exp.get('final_loss', 0):8.4f} | "
-                  f"{exp.get('epochs', 0):6d} | {exp.get('elapsed_s', 0):5.0f}s | {exp.get('timestamp', '')}")
+            status = "KEPT" if exp.get('kept', True) else "DISC"
+            print(f"{i+1:4d} | {exp.get('final_bpb', 0):8.4f} | {status} | {exp.get('timestamp', '')}")
         return
 
     bpbs = [e.get('final_bpb', 0) for e in experiments]
     xs = list(range(1, len(experiments) + 1))
 
-    fig, ax = plt.subplots(figsize=(10, 5))
-    fig.suptitle('autochat — Autonomous Research Progress', fontsize=14, fontweight='bold')
+    # Determine kept vs discarded
+    kept_flags = []
+    for e in experiments:
+        kept_flags.append(e.get('kept', True))  # default: kept
 
-    ax.plot(xs, bpbs, 'b-o', markersize=4, label='val_bpb')
-    ax.set_ylabel('Bits Per Byte (lower is better)')
+    kept_xs = [x for x, k in zip(xs, kept_flags) if k]
+    kept_bpbs = [b for b, k in zip(bpbs, kept_flags) if k]
+    disc_xs = [x for x, k in zip(xs, kept_flags) if not k]
+    disc_bpbs = [b for b, k in zip(bpbs, kept_flags) if not k]
+
+    # Running best line
+    running_best = []
+    best = float('inf')
+    for b, k in zip(bpbs, kept_flags):
+        if k and b < best:
+            best = b
+        running_best.append(best)
+
+    num_kept = sum(kept_flags)
+
+    fig, ax = plt.subplots(figsize=(10, 5))
+    fig.suptitle(f'Autochat Progress: {len(experiments)} Experiments, {num_kept} Kept Improvements',
+                 fontsize=13, fontweight='bold')
+
+    # Running best line
+    ax.plot(xs, running_best, '-', color='#4CAF50', linewidth=1.5, alpha=0.7, label='Running best')
+
+    # Discarded points
+    if disc_xs:
+        ax.scatter(disc_xs, disc_bpbs, color='#CCCCCC', s=40, zorder=3, label='Discarded', edgecolors='#999999', linewidths=0.5)
+
+    # Kept points
+    if kept_xs:
+        ax.scatter(kept_xs, kept_bpbs, color='#4CAF50', s=50, zorder=4, label='Kept', edgecolors='#2E7D32', linewidths=0.5)
+
+    # Annotations for kept experiments
+    for i, exp in enumerate(experiments):
+        if kept_flags[i]:
+            label = exp.get('notes', exp.get('description', ''))
+            if label:
+                # Truncate long labels
+                if len(label) > 30:
+                    label = label[:27] + '...'
+                ax.annotate(label, xy=(xs[i], bpbs[i]),
+                           xytext=(5, -12), textcoords='offset points',
+                           fontsize=7, color='#4CAF50', rotation=15, alpha=0.8)
+
+    ax.set_ylabel('Validation BPB (lower is better)')
     ax.set_xlabel('Experiment #')
-    ax.legend()
-    ax.grid(True, alpha=0.3)
-    if len(bpbs) > 1:
-        best_idx = bpbs.index(min(bpbs))
-        ax.annotate(f'best: {bpbs[best_idx]:.4f}',
-                    xy=(best_idx + 1, bpbs[best_idx]),
-                    fontsize=9, color='green', fontweight='bold')
+    ax.legend(loc='upper right', fontsize=9)
+    ax.grid(True, alpha=0.15)
 
     plt.tight_layout()
     out_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'progress.png')
     plt.savefig(out_path, dpi=150)
-    print(f"📊 Saved progress.png ({len(experiments)} experiments)")
+    print(f"📊 Saved progress.png ({len(experiments)} experiments, {num_kept} kept)")
 
 
 if __name__ == '__main__':
