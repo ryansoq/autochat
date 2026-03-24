@@ -35,29 +35,21 @@ def plot():
         return
 
     bpbs = [e.get('final_bpb', 0) for e in experiments]
-    losses = [e.get('final_loss', 0) for e in experiments]
     xs = list(range(1, len(experiments) + 1))
 
-    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 8), sharex=True)
+    fig, ax = plt.subplots(figsize=(10, 5))
     fig.suptitle('autochat — Autonomous Research Progress', fontsize=14, fontweight='bold')
 
-    # BPB plot
-    ax1.plot(xs, bpbs, 'b-o', markersize=4, label='val_bpb')
-    ax1.set_ylabel('Bits Per Byte (lower is better)')
-    ax1.legend()
-    ax1.grid(True, alpha=0.3)
+    ax.plot(xs, bpbs, 'b-o', markersize=4, label='val_bpb')
+    ax.set_ylabel('Bits Per Byte (lower is better)')
+    ax.set_xlabel('Experiment #')
+    ax.legend()
+    ax.grid(True, alpha=0.3)
     if len(bpbs) > 1:
         best_idx = bpbs.index(min(bpbs))
-        ax1.annotate(f'best: {bpbs[best_idx]:.4f}',
-                     xy=(best_idx + 1, bpbs[best_idx]),
-                     fontsize=9, color='green', fontweight='bold')
-
-    # Loss plot
-    ax2.plot(xs, losses, 'r-o', markersize=4, label='loss')
-    ax2.set_ylabel('Cross Entropy Loss')
-    ax2.set_xlabel('Experiment #')
-    ax2.legend()
-    ax2.grid(True, alpha=0.3)
+        ax.annotate(f'best: {bpbs[best_idx]:.4f}',
+                    xy=(best_idx + 1, bpbs[best_idx]),
+                    fontsize=9, color='green', fontweight='bold')
 
     plt.tight_layout()
     out_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'progress.png')
