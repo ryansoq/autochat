@@ -1209,7 +1209,7 @@ def compute_bpb(loss, tokenizer, texts):
 TIME_BUDGET = 20 * 60  # 20 minutes
 
 
-def train(epochs=500, lr=0.001, time_budget=None):
+def train(epochs=500, lr=0.002, time_budget=None):
     # Fixed seed for reproducible experiments
     np.random.seed(42)
 
@@ -1228,11 +1228,11 @@ def train(epochs=500, lr=0.001, time_budget=None):
     print(f"📏 Max sequence length: {max_len}")
 
     # Model
-    # 150 條資料用稍小的模型，平衡速度和容量
+    # Bob 實驗證實：3層+d_ff=256 是最佳平衡（bpb 0.099057）
     d_model = 96
-    d_ff = 192
+    d_ff = 256
     num_heads = 6
-    num_layers = 2
+    num_layers = 3
 
     model = GPTMini(
         vocab_size=tokenizer.vocab_size,
