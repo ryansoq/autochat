@@ -55,37 +55,49 @@ def plot():
 
     num_kept = sum(kept_flags)
 
-    fig, ax = plt.subplots(figsize=(10, 5))
-    fig.suptitle(f'Autochat Progress: {len(experiments)} Experiments, {num_kept} Kept Improvements',
-                 fontsize=13, fontweight='bold')
+    fig, ax = plt.subplots(figsize=(12, 5))
+    ax.set_title(f'Autochat Progress: {len(experiments)} Experiments, {num_kept} Kept Improvements',
+                 fontsize=11, loc='left')
 
-    # Running best line
-    ax.plot(xs, running_best, '-', color='#4CAF50', linewidth=1.5, alpha=0.7, label='Running best')
-
-    # Discarded points
+    # Discarded — subtle background dots
     if disc_xs:
-        ax.scatter(disc_xs, disc_bpbs, color='#CCCCCC', s=40, zorder=3, label='Discarded', edgecolors='#999999', linewidths=0.5)
+        ax.scatter(disc_xs, disc_bpbs, color='#BBBBBB', s=10, zorder=2,
+                   alpha=0.5, label='Discarded', edgecolors='none')
 
-    # Kept points
+    # Kept — prominent green
     if kept_xs:
-        ax.scatter(kept_xs, kept_bpbs, color='#4CAF50', s=50, zorder=4, label='Kept', edgecolors='#2E7D32', linewidths=0.5)
+        ax.scatter(kept_xs, kept_bpbs, color='#4CAF50', s=55, zorder=4,
+                   label='Kept', edgecolors='#2E7D32', linewidths=0.5)
 
-    # Annotations for kept experiments
+    # Running best — stepped so improvements stair-step down
+    ax.plot(xs, running_best, '-', color='#4CAF50', linewidth=1.3,
+            alpha=0.75, label='Running best', drawstyle='steps-post', zorder=3)
+
+    # Annotations on every Kept point — diagonal up-right
     for i, exp in enumerate(experiments):
         if kept_flags[i]:
-            label = exp.get('notes', exp.get('description', ''))
+            label = exp.get('notes') or exp.get('description', '')
             if label:
-                # Truncate long labels
-                if len(label) > 30:
-                    label = label[:27] + '...'
+                if len(label) > 38:
+                    label = label[:35] + '...'
                 ax.annotate(label, xy=(xs[i], bpbs[i]),
-                           xytext=(5, -12), textcoords='offset points',
-                           fontsize=7, color='#4CAF50', rotation=15, alpha=0.8)
+                            xytext=(6, 6), textcoords='offset points',
+                            fontsize=7, color='#2E7D32', rotation=20, alpha=0.85)
 
     ax.set_ylabel('Validation BPB (lower is better)')
     ax.set_xlabel('Experiment #')
-    ax.legend(loc='upper right', fontsize=9)
-    ax.grid(True, alpha=0.15)
+    ax.legend(loc='upper right', fontsize=9, framealpha=0.9)
+    ax.grid(True, alpha=0.2)
+    ax.spines['top'].set_visible(False)
+    ax.spines['right'].set_visible(False)
+
+    # Zoom y-axis so kept points + running best fill the frame, like
+    # karpathy/autoresearch — dropping early outliers off-screen is OK
+    # because they're not informative once the search is past them.
+    if kept_bpbs:
+        y_lo = min(running_best) * 0.95
+        y_hi = max(kept_bpbs) * 1.18
+        ax.set_ylim(y_lo, y_hi)
 
     plt.tight_layout()
     out_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'progress.png')
