@@ -1,21 +1,23 @@
 {
-  "best_bpb": 0.10023,
-  "best_bpb_commit": "cd9edfd",
-  "best_bpb_notes": "HYP2 Xavier init alignment — 1.2% from op-classes era 0.099",
-  "best_bpb_numpy_grad": 0.10023,
-  "best_bpb_numpy_grad_commit": "cd9edfd",
+  "best_bpb": 0.099852,
+  "best_bpb_commit": "(pending HYP5 commit)",
+  "best_bpb_notes": "HYP5 mini-batch — basically ties original op-classes 0.099, in 50% of the time",
+  "best_bpb_numpy_grad": 0.099852,
+  "best_bpb_numpy_grad_commit": "(pending HYP5 commit)",
   "current_pid": null,
   "current_started": null,
   "current_hypothesis": null,
   "current_log": null,
   "last_result": {
-    "hypothesis": "HYP9 match original arch (2-layer/d_ff=192)",
-    "bpb": 0.102841,
+    "hypothesis": "HYP5 mini-batch (BATCH_SIZE=8, length-bucket batching, no padding)",
+    "bpb": 0.099852,
     "accuracy": "92/92",
-    "kept": false,
-    "verdict": "REVERT",
-    "reason": "+2.6% vs HYP2. Strongly suggests remaining 1.2% gap to all-time 0.099 is RNG seed variance, not framework or arch. We've effectively saturated the 92-QA corpus.",
-    "log": "/tmp/autochat-hyp9-1777367806.log"
+    "kept": true,
+    "verdict": "KEEP — BREAKS PARITY WITH ALL-TIME BEST",
+    "reason": "bpb 0.0999 — beats HYP2 (0.1002) and ties original op-classes 0.099. Training 515s = 50% of HYP2's 1041s. Unlocks: HYP6 d_model=128 in budget, nami-lm scale, multi-seed averaging.",
+    "log": "/tmp/autochat-hyp5-1777377079.log",
+    "epochs_to_converge": 100,
+    "speedup": "1.97x vs HYP2"
   },
   "tried_hypotheses": [
     {"name": "HYP1 float32", "bpb": 0.220357, "kept": false},
@@ -23,6 +25,7 @@
     {"name": "HYP3 tied embedding", "bpb": 0.101888, "kept": false},
     {"name": "HYP4 lr=0.001", "bpb": 0.101982, "kept": false},
     {"name": "HYP6 d_model 128", "bpb": 0.124719, "kept": false},
-    {"name": "HYP9 2-layer/d_ff=192", "bpb": 0.102841, "kept": false}
+    {"name": "HYP9 2-layer/d_ff=192", "bpb": 0.102841, "kept": false},
+    {"name": "HYP5 mini-batch", "bpb": 0.099852, "kept": true}
   ]
 }

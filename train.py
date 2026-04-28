@@ -284,18 +284,26 @@ class GPTMini(Module):
             reinit(block.ff.w1);  reinit(block.ff.gate); reinit(block.ff.w2)
 
     def forward(self, token_ids) -> Tensor:
+        """Accept (T,) for single seq or (B, T) for batched. Returns logits
+        with matching leading dim — (T, V) or (B, T, V)."""
         from numpy_grad.ops import embedding as _embed
         ids = np.asarray(token_ids, dtype=np.int64)
-        T = ids.shape[-1]
-        # token + positional — gather pos rows so pos_emb's grad flows back
-        x = self.token_emb(ids) + _embed(self.pos_emb, np.arange(T, dtype=np.int64))
-        # MHA expects (B, T, D); squeeze back after blocks
-        x = x.reshape(1, T, self.d_model)
+        single = ids.ndim == 1
+        if single:
+            ids = ids[None, :]                                 # (T,) → (1, T)
+        B, T = ids.shape
+
+        # token + positional — gather first T rows of pos_emb
+        # token_emb(ids) → (B, T, D); pos broadcast via right-aligned shapes
+        pos = _embed(self.pos_emb, np.arange(T, dtype=np.int64))  # (T, D)
+        x = self.token_emb(ids) + pos                           # (B, T, D) + (T, D) → (B, T, D)
+
         for block in self.blocks:
-            x = block(x)
-        x = x.reshape(T, self.d_model)
-        x = self.head(x)
-        return self.out_proj(x)                                # (T, vocab)
+            x = block(x)                                       # (B, T, D)
+
+        x = self.head(x)                                       # (B, T, D)
+        logits = self.out_proj(x)                              # (B, T, V)
+        return logits.reshape(T, self.vocab_size) if single else logits
 
     def generate(self, token_ids, max_new=50, temperature=0.1):
         ids = list(token_ids)
@@ -408,6 +416,22 @@ def train(epochs: int = 500, lr: float = 0.002, time_budget: int | None = None):
 
     opt = AdamW(model.parameters(), lr=lr, weight_decay=0.02)
 
+    # HYP5: bucket sequences by length so we can batch them with no padding.
+    # Each bucket produces inputs of shape (B, L-1) and targets (B, L-1).
+    BATCH_SIZE = 8
+    length_buckets: dict[int, list[list[int]]] = {}
+    for text in TRAINING_DATA:
+        ids = tokenizer.encode(text)
+        if len(ids) < 2:
+            continue
+        length_buckets.setdefault(len(ids), []).append(ids)
+    bucket_keys = sorted(length_buckets.keys())
+    n_batches_per_epoch = sum(
+        (len(length_buckets[L]) + BATCH_SIZE - 1) // BATCH_SIZE for L in bucket_keys
+    )
+    print(f"📦 batched: {len(bucket_keys)} length buckets, "
+          f"~{n_batches_per_epoch} batches/epoch (size {BATCH_SIZE})")
+
     print("🏋️  Training...")
     start = time.time()
     perfect_count = 0
@@ -431,21 +455,29 @@ def train(epochs: int = 500, lr: float = 0.002, time_budget: int | None = None):
         opt.lr = cur_lr
 
         total_loss = 0.0
-        indices = np.random.permutation(len(TRAINING_DATA))
-        for idx in indices:
-            text = TRAINING_DATA[idx]
-            ids = tokenizer.encode(text)
-            if len(ids) < 2:
-                continue
-            opt.zero_grad()
-            logits = model(ids[:-1])                           # (T, V)
-            loss = cross_entropy(logits, np.array(ids[1:]))
-            loss.backward()
-            clip_grad_norm_(model.parameters(), max_norm=0.5)
-            opt.step()
-            total_loss += float(loss.data)
+        n_seqs_this_epoch = 0
 
-        avg_loss = total_loss / len(TRAINING_DATA)
+        # Shuffle bucket order + within-bucket order each epoch
+        epoch_buckets = bucket_keys[:]
+        np.random.shuffle(epoch_buckets)
+        for L in epoch_buckets:
+            seqs = length_buckets[L][:]
+            np.random.shuffle(seqs)
+            for i in range(0, len(seqs), BATCH_SIZE):
+                batch = seqs[i:i + BATCH_SIZE]
+                inputs = np.array([s[:-1] for s in batch], dtype=np.int64)   # (B, L-1)
+                targets = np.array([s[1:] for s in batch], dtype=np.int64)   # (B, L-1)
+                opt.zero_grad()
+                logits = model(inputs)                                       # (B, L-1, V)
+                loss = cross_entropy(logits, targets)                        # mean over B*(L-1)
+                loss.backward()
+                clip_grad_norm_(model.parameters(), max_norm=0.5)
+                opt.step()
+                # weight by # sequences so per-sequence avg is comparable to old loop
+                total_loss += float(loss.data) * len(batch)
+                n_seqs_this_epoch += len(batch)
+
+        avg_loss = total_loss / max(n_seqs_this_epoch, 1)
 
         if avg_loss > prev_loss * 3 and epoch > warmup_epochs:
             lr_reductions += 1
