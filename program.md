@@ -57,3 +57,95 @@ Lower **val_bpb** (validation bits per byte). Lower is better.
 ## Experiment Log Format
 
 Each run appends to `experiments.jsonl`. Review past experiments before proposing changes.
+
+## Loop mechanics — for any agent picking this up
+
+This file is the contract. Any agent (Claude Code, Aqua, GPT-4-tools, a
+self-hosted runner) can drive the loop as long as it follows the cycle
+below. The state file `autoresearch-state.json` is the single source of
+truth — read it first, write it last, hold the lock in between.
+
+### Per-tick algorithm
+
+```
+1. read program.md (this file) — confirm rules + budget haven't changed
+2. read autoresearch-state.json — see best_bpb, current_pid, last_result
+3. branch:
+   3a. current_pid is set AND alive
+       → tail current_log; do nothing else; exit
+   3b. current_pid is set AND finished (process gone, log has "Total:" line)
+       → harvest the result:
+         - extract final bpb from log
+         - if bpb < best_bpb_numpy_grad → KEEP path (3b-K)
+         - else → REVERT path (3b-R)
+       → clear current_pid / current_started / current_hypothesis / current_log
+   3c. current_pid is null
+       → propose next hypothesis (HYP{N+1}), apply edit to train.py
+         and/or numpy-grad, run pytest if numpy-grad touched, then:
+           PYTHONPATH=<numpy-grad path> nohup python3 -u train.py --auto \
+             > /tmp/autochat-hyp{N}-$(date +%s).log 2>&1 &
+       → write new current_pid / current_started / current_hypothesis /
+         current_log into state file
+```
+
+### KEEP path (3b-K)
+
+```
+- update experiments.jsonl entry: {"kept": true, "notes": "HYP{N} ..."}
+- update autoresearch-state.json: best_bpb, best_bpb_commit (placeholder),
+  push hypothesis to tried_hypotheses
+- regenerate progress.png:  python3 plot_progress.py
+- git add train.py progress.png autoresearch-state.json
+- git commit with descriptive message: HYP{N} ... — bpb X (-Y% vs prior best)
+- git push
+```
+
+### REVERT path (3b-R)
+
+```
+- update experiments.jsonl entry: {"kept": false, "notes": "HYP{N} ... — REVERT"}
+- git checkout train.py  (and any numpy-grad files modified)
+- update autoresearch-state.json: leave best_bpb unchanged, push hypothesis
+  to tried_hypotheses with kept:false
+- regenerate progress.png:  python3 plot_progress.py
+- git add progress.png autoresearch-state.json   (NOT train.py — it's reverted)
+- git commit with message: HYP{N} ... — REVERT (bpb X vs best Y, +Z%)
+- git push  (only the chart + state — main branch stays at the best train.py)
+```
+
+### Conventions
+
+- **HYP numbering** monotonically increases. Skipped numbers are fine
+  (HYP6 then HYP9 is OK if you abandoned HYP7-8 mid-design).
+- **One change per experiment**. If you mix two ideas you can't tell
+  which one moved the needle.
+- **state file `current_pid` is the lock**. Never start a new experiment
+  while one is running. If you crash mid-experiment, manually clear
+  current_pid so the next tick can proceed.
+- **`experiments.jsonl` is gitignored** — it's a runtime log. Failed
+  entries stay there with `kept:false` so `progress.png` can show them
+  as small grey dots. Don't delete failed entries.
+- **Quiet hours (23:00-08:00 local)**: commit OK, push OK, but avoid
+  starting new experiments — let any in-flight one finish, leave fresh
+  proposals to the next morning.
+
+### Hooking into a heartbeat
+
+Any periodic mechanism that injects "read program.md and run one tick"
+into your agent will work. Examples:
+
+- ClawX `config.json` schedule:
+  ```json
+  "autochat-loop": {
+    "enabled": true,
+    "cron": "*/30 * * * *",
+    "prompt": "Read /path/to/autochat/program.md and run one tick of the autoresearch loop."
+  }
+  ```
+- A standalone shell loop with sleep:
+  `while true; do <invoke-agent-with-program.md>; sleep 1800; done`
+- An external scheduler (systemd timer, GitHub Actions cron, etc) that
+  drives the agent through `claude --inject "..."` or similar.
+
+The agent's job is just to follow the per-tick algorithm above. The
+heartbeat mechanism is interchangeable.
