@@ -8,15 +8,17 @@
   "current_started": null,
   "current_hypothesis": null,
   "current_log": null,
+  "saturated": true,
+  "saturation_note": "7 single-axis reverts from HYP11 (HYP3 tied / HYP4 lr / HYP12 d_ff↑ / HYP13 layers↑ / HYP14 warmup↑ / HYP15 batch↑ / HYP16 batch↓). All within ±2-3% noise floor. Single-axis sweep exhausted; HYP11 is local optimum on the 92-QA corpus. Next bet: data-side scaling (BPE / more QA / nami-lm corpus) to break this regime entirely.",
   "last_result": {
-    "hypothesis": "HYP14 warmup_epochs 2 → 5",
-    "bpb": 0.100853,
+    "hypothesis": "HYP16 BATCH_SIZE 8 → 4",
+    "bpb": 0.101708,
     "accuracy": "92/92",
     "kept": false,
     "verdict": "REVERT",
-    "reason": "+2.1% vs HYP11. Longer warmup eats epochs from cosine decay, and mid-train spike at ep 50 (bpb 0.1611 from 0.2360 → reverted) suggests over-shoot at peak lr — current 2-epoch warmup was already calibrated for this lr.",
-    "log": "/tmp/autochat-hyp14-1777406525.log",
-    "epochs_to_converge": 100
+    "reason": "+2.9% vs HYP11. Smaller batch means slower per-epoch (~14s vs HYP11 9s), only 86 ep in budget. Both batch directions (HYP15 16 and HYP16 4) regress vs 8 — sweet spot confirmed.",
+    "log": "/tmp/autochat-hyp16-1777410099.log",
+    "epochs_to_converge": null
   },
   "tried_hypotheses": [
     {"name": "HYP1 float32", "bpb": 0.220357, "kept": false},
@@ -30,6 +32,8 @@
     {"name": "HYP11 d_ff=384", "bpb": 0.098806, "kept": true},
     {"name": "HYP12 d_ff=512", "bpb": 0.099447, "kept": false},
     {"name": "HYP13 layers=4", "bpb": 0.116385, "kept": false},
-    {"name": "HYP14 warmup=5", "bpb": 0.100853, "kept": false}
+    {"name": "HYP14 warmup=5", "bpb": 0.100853, "kept": false},
+    {"name": "HYP15 BATCH=16", "bpb": 0.106137, "kept": false},
+    {"name": "HYP16 BATCH=4", "bpb": 0.101708, "kept": false}
   ]
 }
