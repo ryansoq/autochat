@@ -401,7 +401,7 @@ def train(epochs: int = 500, lr: float = 0.002, time_budget: int | None = None):
     max_len = max(len(tokenizer.encode(t)) for t in TRAINING_DATA) + 1
     print(f"📏 Max seq len: {max_len}")
 
-    d_model, d_ff, num_heads, num_layers = 128, 256, 8, 3  # HYP10: d_model 96→128 retry on mini-batch
+    d_model, d_ff, num_heads, num_layers = 128, 384, 8, 3  # HYP11: d_ff 256→384 (toward 4*d_model)
     model = GPTMini(
         vocab_size=tokenizer.vocab_size,
         d_model=d_model, d_ff=d_ff, num_heads=num_heads, num_layers=num_layers,

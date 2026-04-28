@@ -1,22 +1,22 @@
 {
-  "best_bpb": 0.099028,
-  "best_bpb_commit": "(pending HYP10 commit)",
-  "best_bpb_notes": "HYP10 d_model=128 + mini-batch — NEW ALL-TIME BEST (beats prior 0.099057)",
-  "best_bpb_numpy_grad": 0.099028,
-  "best_bpb_numpy_grad_commit": "(pending HYP10 commit)",
+  "best_bpb": 0.098806,
+  "best_bpb_commit": "(pending HYP11 commit)",
+  "best_bpb_notes": "HYP11 d_ff=384 + d_model=128 + mini-batch — clear new all-time best",
+  "best_bpb_numpy_grad": 0.098806,
+  "best_bpb_numpy_grad_commit": "(pending HYP11 commit)",
   "current_pid": null,
   "current_started": null,
   "current_hypothesis": null,
   "current_log": null,
   "last_result": {
-    "hypothesis": "HYP10 d_model=128 retry on mini-batch (HYP6 redux now that HYP5 unblocked speed)",
-    "bpb": 0.099028,
+    "hypothesis": "HYP11 d_ff 256 → 384 (toward 4*d_model ratio)",
+    "bpb": 0.098806,
     "accuracy": "92/92",
     "kept": true,
-    "verdict": "KEEP — NEW ALL-TIME BEST",
-    "reason": "Mini-batch (HYP5) gave us the per-epoch headroom for d_model=128 to actually converge in budget. 599k params + 100 epochs in 700s. Beats prior all-time 0.099057.",
-    "log": "/tmp/autochat-hyp10-1777378559.log",
-    "epochs_to_converge": 100
+    "verdict": "KEEP — NEW BEST",
+    "reason": "Wider FFN at d_model=128 gave bpb headroom. 731k params, 110 ep / 974s — still under budget.",
+    "log": "/tmp/autochat-hyp11-1777388204.log",
+    "epochs_to_converge": 110
   },
   "tried_hypotheses": [
     {"name": "HYP1 float32", "bpb": 0.220357, "kept": false},
@@ -26,6 +26,7 @@
     {"name": "HYP6 d_model 128 (no batch)", "bpb": 0.124719, "kept": false},
     {"name": "HYP9 2-layer/d_ff=192", "bpb": 0.102841, "kept": false},
     {"name": "HYP5 mini-batch", "bpb": 0.099852, "kept": true},
-    {"name": "HYP10 d_model=128 + mini-batch", "bpb": 0.099028, "kept": true}
+    {"name": "HYP10 d_model=128 + mini-batch", "bpb": 0.099028, "kept": true},
+    {"name": "HYP11 d_ff=384", "bpb": 0.098806, "kept": true}
   ]
 }
