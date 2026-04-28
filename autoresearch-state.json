@@ -9,20 +9,20 @@
   "current_hypothesis": null,
   "current_log": null,
   "last_result": {
-    "hypothesis": "HYP6 d_model 128 (heads 8)",
-    "bpb": 0.124719,
-    "accuracy": "91/92",
+    "hypothesis": "HYP9 match original arch (2-layer/d_ff=192)",
+    "bpb": 0.102841,
+    "accuracy": "92/92",
     "kept": false,
     "verdict": "REVERT",
-    "reason": "Underfit at 20-min budget. Larger model (412k → 600k params) → ~30% slower per epoch → only fit 95 ep (HYP2 needed 110). Best mid-train was ep 80 bpb 0.1144. Capacity isn't the bottleneck at this corpus size.",
-    "log": "/tmp/autochat-hyp6-1777365216.log",
-    "epochs_to_converge": null
+    "reason": "+2.6% vs HYP2. Strongly suggests remaining 1.2% gap to all-time 0.099 is RNG seed variance, not framework or arch. We've effectively saturated the 92-QA corpus.",
+    "log": "/tmp/autochat-hyp9-1777367806.log"
   },
   "tried_hypotheses": [
     {"name": "HYP1 float32", "bpb": 0.220357, "kept": false},
     {"name": "HYP2 Xavier init", "bpb": 0.10023, "kept": true},
     {"name": "HYP3 tied embedding", "bpb": 0.101888, "kept": false},
     {"name": "HYP4 lr=0.001", "bpb": 0.101982, "kept": false},
-    {"name": "HYP6 d_model 128", "bpb": 0.124719, "kept": false}
+    {"name": "HYP6 d_model 128", "bpb": 0.124719, "kept": false},
+    {"name": "HYP9 2-layer/d_ff=192", "bpb": 0.102841, "kept": false}
   ]
 }
