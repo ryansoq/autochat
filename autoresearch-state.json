@@ -1,25 +1,26 @@
 {
   "best_bpb": 0.10023,
-  "best_bpb_commit": "(pending HYP2 commit)",
+  "best_bpb_commit": "cd9edfd",
   "best_bpb_notes": "HYP2 Xavier init alignment — 1.2% from op-classes era 0.099",
   "best_bpb_numpy_grad": 0.10023,
-  "best_bpb_numpy_grad_commit": "(pending HYP2 commit)",
+  "best_bpb_numpy_grad_commit": "cd9edfd",
   "current_pid": null,
   "current_started": null,
   "current_hypothesis": null,
   "current_log": null,
   "last_result": {
-    "hypothesis": "HYP2 Xavier init alignment (sqrt(2/(in+out)) instead of sqrt(2/in)) on all 18 Linears via _apply_xavier_init_to_linears in train.py",
-    "bpb": 0.10023,
+    "hypothesis": "HYP3 tied embedding (out_proj reuses token_emb.weight.T)",
+    "bpb": 0.101888,
     "accuracy": "92/92",
-    "kept": true,
-    "verdict": "KEEP",
-    "reason": "-29% vs prior numpy-grad baseline 0.1413, only 1.2% from all-time best 0.099. Confirms the gap was mostly init scale, not autograd correctness.",
-    "log": "/tmp/autochat-hyp2-1777354541.log",
+    "kept": false,
+    "verdict": "REVERT",
+    "reason": "+1.6% vs HYP2 0.1002. Param save -12% but tiny corpus (3KB) doesn't reward shared representation. Literature: tied emb helps when data is abundant; here it's overfitted-already so the symmetry constraint mildly hurts.",
+    "log": "/tmp/autochat-hyp3-1777356693.log",
     "epochs_to_converge": 110
   },
   "tried_hypotheses": [
     {"name": "HYP1 float32", "bpb": 0.220357, "kept": false},
-    {"name": "HYP2 Xavier init", "bpb": 0.10023, "kept": true}
+    {"name": "HYP2 Xavier init", "bpb": 0.10023, "kept": true},
+    {"name": "HYP3 tied embedding", "bpb": 0.101888, "kept": false}
   ]
 }
