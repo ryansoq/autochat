@@ -1,21 +1,21 @@
 {
   "best_bpb": 0.098806,
-  "best_bpb_commit": "(pending HYP11 commit)",
-  "best_bpb_notes": "HYP11 d_ff=384 + d_model=128 + mini-batch — clear new all-time best",
+  "best_bpb_commit": "853387a",
+  "best_bpb_notes": "HYP11 d_ff=384 + d_model=128 + mini-batch — current all-time best",
   "best_bpb_numpy_grad": 0.098806,
-  "best_bpb_numpy_grad_commit": "(pending HYP11 commit)",
+  "best_bpb_numpy_grad_commit": "853387a",
   "current_pid": null,
   "current_started": null,
   "current_hypothesis": null,
   "current_log": null,
   "last_result": {
-    "hypothesis": "HYP11 d_ff 256 → 384 (toward 4*d_model ratio)",
-    "bpb": 0.098806,
+    "hypothesis": "HYP12 d_ff 384 → 512 (4*d_model canonical)",
+    "bpb": 0.099447,
     "accuracy": "92/92",
-    "kept": true,
-    "verdict": "KEEP — NEW BEST",
-    "reason": "Wider FFN at d_model=128 gave bpb headroom. 731k params, 110 ep / 974s — still under budget.",
-    "log": "/tmp/autochat-hyp11-1777388204.log",
+    "kept": false,
+    "verdict": "REVERT (quiet hours — committed locally, push deferred to morning)",
+    "reason": "+0.6% vs HYP11 0.0988. 4× ratio overshot — d_ff=384 (3×) was the sweet spot for this 92-QA corpus.",
+    "log": "/tmp/autochat-hyp12-1777389462.log",
     "epochs_to_converge": 110
   },
   "tried_hypotheses": [
@@ -27,6 +27,7 @@
     {"name": "HYP9 2-layer/d_ff=192", "bpb": 0.102841, "kept": false},
     {"name": "HYP5 mini-batch", "bpb": 0.099852, "kept": true},
     {"name": "HYP10 d_model=128 + mini-batch", "bpb": 0.099028, "kept": true},
-    {"name": "HYP11 d_ff=384", "bpb": 0.098806, "kept": true}
+    {"name": "HYP11 d_ff=384", "bpb": 0.098806, "kept": true},
+    {"name": "HYP12 d_ff=512", "bpb": 0.099447, "kept": false}
   ]
 }
