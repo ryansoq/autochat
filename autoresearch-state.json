@@ -9,18 +9,19 @@
   "current_hypothesis": null,
   "current_log": null,
   "last_result": {
-    "hypothesis": "HYP3 tied embedding (out_proj reuses token_emb.weight.T)",
-    "bpb": 0.101888,
+    "hypothesis": "HYP4 lr 0.002 → 0.001",
+    "bpb": 0.101982,
     "accuracy": "92/92",
     "kept": false,
     "verdict": "REVERT",
-    "reason": "+1.6% vs HYP2 0.1002. Param save -12% but tiny corpus (3KB) doesn't reward shared representation. Literature: tied emb helps when data is abundant; here it's overfitted-already so the symmetry constraint mildly hurts.",
-    "log": "/tmp/autochat-hyp3-1777356693.log",
-    "epochs_to_converge": 110
+    "reason": "+1.8% vs HYP2. Converges faster (90 vs 110 ep) but cosine floor reached before further polish; lr=0.002 and lr=0.001 settle similarly.",
+    "log": "/tmp/autochat-hyp4-1777358597.log",
+    "epochs_to_converge": 90
   },
   "tried_hypotheses": [
     {"name": "HYP1 float32", "bpb": 0.220357, "kept": false},
     {"name": "HYP2 Xavier init", "bpb": 0.10023, "kept": true},
-    {"name": "HYP3 tied embedding", "bpb": 0.101888, "kept": false}
+    {"name": "HYP3 tied embedding", "bpb": 0.101888, "kept": false},
+    {"name": "HYP4 lr=0.001", "bpb": 0.101982, "kept": false}
   ]
 }
