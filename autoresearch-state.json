@@ -9,14 +9,14 @@
   "current_hypothesis": null,
   "current_log": null,
   "last_result": {
-    "hypothesis": "HYP12 d_ff 384 → 512 (4*d_model canonical)",
-    "bpb": 0.099447,
-    "accuracy": "92/92",
+    "hypothesis": "HYP13 layers 3 → 4 (depth)",
+    "bpb": 0.116385,
+    "accuracy": "91/92",
     "kept": false,
-    "verdict": "REVERT (quiet hours — committed locally, push deferred to morning)",
-    "reason": "+0.6% vs HYP11 0.0988. 4× ratio overshot — d_ff=384 (3×) was the sweet spot for this 92-QA corpus.",
-    "log": "/tmp/autochat-hyp12-1777389462.log",
-    "epochs_to_converge": 110
+    "verdict": "REVERT",
+    "reason": "Underfit at 20-min budget. 4 layers ~17s/ep — only 71 ep before budget hit. Same failure mode as HYP6 (d_model=128 pre-batch). Depth scales per-epoch cost more than mini-batch saves. Width has more headroom for further bumps.",
+    "log": "/tmp/autochat-hyp13-1777404062.log",
+    "epochs_to_converge": null
   },
   "tried_hypotheses": [
     {"name": "HYP1 float32", "bpb": 0.220357, "kept": false},
@@ -28,6 +28,7 @@
     {"name": "HYP5 mini-batch", "bpb": 0.099852, "kept": true},
     {"name": "HYP10 d_model=128 + mini-batch", "bpb": 0.099028, "kept": true},
     {"name": "HYP11 d_ff=384", "bpb": 0.098806, "kept": true},
-    {"name": "HYP12 d_ff=512", "bpb": 0.099447, "kept": false}
+    {"name": "HYP12 d_ff=512", "bpb": 0.099447, "kept": false},
+    {"name": "HYP13 layers=4", "bpb": 0.116385, "kept": false}
   ]
 }
