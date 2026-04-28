@@ -1,31 +1,31 @@
 {
-  "best_bpb": 0.099852,
-  "best_bpb_commit": "(pending HYP5 commit)",
-  "best_bpb_notes": "HYP5 mini-batch — basically ties original op-classes 0.099, in 50% of the time",
-  "best_bpb_numpy_grad": 0.099852,
-  "best_bpb_numpy_grad_commit": "(pending HYP5 commit)",
+  "best_bpb": 0.099028,
+  "best_bpb_commit": "(pending HYP10 commit)",
+  "best_bpb_notes": "HYP10 d_model=128 + mini-batch — NEW ALL-TIME BEST (beats prior 0.099057)",
+  "best_bpb_numpy_grad": 0.099028,
+  "best_bpb_numpy_grad_commit": "(pending HYP10 commit)",
   "current_pid": null,
   "current_started": null,
   "current_hypothesis": null,
   "current_log": null,
   "last_result": {
-    "hypothesis": "HYP5 mini-batch (BATCH_SIZE=8, length-bucket batching, no padding)",
-    "bpb": 0.099852,
+    "hypothesis": "HYP10 d_model=128 retry on mini-batch (HYP6 redux now that HYP5 unblocked speed)",
+    "bpb": 0.099028,
     "accuracy": "92/92",
     "kept": true,
-    "verdict": "KEEP — BREAKS PARITY WITH ALL-TIME BEST",
-    "reason": "bpb 0.0999 — beats HYP2 (0.1002) and ties original op-classes 0.099. Training 515s = 50% of HYP2's 1041s. Unlocks: HYP6 d_model=128 in budget, nami-lm scale, multi-seed averaging.",
-    "log": "/tmp/autochat-hyp5-1777377079.log",
-    "epochs_to_converge": 100,
-    "speedup": "1.97x vs HYP2"
+    "verdict": "KEEP — NEW ALL-TIME BEST",
+    "reason": "Mini-batch (HYP5) gave us the per-epoch headroom for d_model=128 to actually converge in budget. 599k params + 100 epochs in 700s. Beats prior all-time 0.099057.",
+    "log": "/tmp/autochat-hyp10-1777378559.log",
+    "epochs_to_converge": 100
   },
   "tried_hypotheses": [
     {"name": "HYP1 float32", "bpb": 0.220357, "kept": false},
     {"name": "HYP2 Xavier init", "bpb": 0.10023, "kept": true},
     {"name": "HYP3 tied embedding", "bpb": 0.101888, "kept": false},
     {"name": "HYP4 lr=0.001", "bpb": 0.101982, "kept": false},
-    {"name": "HYP6 d_model 128", "bpb": 0.124719, "kept": false},
+    {"name": "HYP6 d_model 128 (no batch)", "bpb": 0.124719, "kept": false},
     {"name": "HYP9 2-layer/d_ff=192", "bpb": 0.102841, "kept": false},
-    {"name": "HYP5 mini-batch", "bpb": 0.099852, "kept": true}
+    {"name": "HYP5 mini-batch", "bpb": 0.099852, "kept": true},
+    {"name": "HYP10 d_model=128 + mini-batch", "bpb": 0.099028, "kept": true}
   ]
 }
