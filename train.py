@@ -260,6 +260,29 @@ class GPTMini(Module):
                                Linear(d_ff, d_model, bias=False))
         self.out_proj = Linear(d_model, vocab_size, bias=False)
 
+        # HYP2: align Linear W init with original op-classes baseline (Xavier
+        # sqrt(2/(in+out)) instead of numpy-grad's default He sqrt(2/in)).
+        # Original autochat used this scale and reached bpb 0.099; numpy-grad's
+        # He init (PyTorch default) drifted to bpb 0.141. Test if Xavier closes
+        # the gap.
+        self._apply_xavier_init_to_linears()
+
+    def _apply_xavier_init_to_linears(self):
+        def reinit(linear):
+            in_d, out_d = linear.W.data.shape
+            scale = np.sqrt(2.0 / (in_d + out_d))
+            linear.W.data = (np.random.randn(in_d, out_d) * scale).astype(linear.W.data.dtype)
+        # head MLP (Linear → GELU → Linear)
+        reinit(self.head.layers[0])
+        reinit(self.head.layers[2])
+        # output projection
+        reinit(self.out_proj)
+        # per block
+        for block in self.blocks:
+            reinit(block.mha.Wq); reinit(block.mha.Wk)
+            reinit(block.mha.Wv); reinit(block.mha.Wo)
+            reinit(block.ff.w1);  reinit(block.ff.gate); reinit(block.ff.w2)
+
     def forward(self, token_ids) -> Tensor:
         from numpy_grad.ops import embedding as _embed
         ids = np.asarray(token_ids, dtype=np.int64)

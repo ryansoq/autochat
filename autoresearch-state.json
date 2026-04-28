@@ -1,0 +1,25 @@
+{
+  "best_bpb": 0.10023,
+  "best_bpb_commit": "(pending HYP2 commit)",
+  "best_bpb_notes": "HYP2 Xavier init alignment — 1.2% from op-classes era 0.099",
+  "best_bpb_numpy_grad": 0.10023,
+  "best_bpb_numpy_grad_commit": "(pending HYP2 commit)",
+  "current_pid": null,
+  "current_started": null,
+  "current_hypothesis": null,
+  "current_log": null,
+  "last_result": {
+    "hypothesis": "HYP2 Xavier init alignment (sqrt(2/(in+out)) instead of sqrt(2/in)) on all 18 Linears via _apply_xavier_init_to_linears in train.py",
+    "bpb": 0.10023,
+    "accuracy": "92/92",
+    "kept": true,
+    "verdict": "KEEP",
+    "reason": "-29% vs prior numpy-grad baseline 0.1413, only 1.2% from all-time best 0.099. Confirms the gap was mostly init scale, not autograd correctness.",
+    "log": "/tmp/autochat-hyp2-1777354541.log",
+    "epochs_to_converge": 110
+  },
+  "tried_hypotheses": [
+    {"name": "HYP1 float32", "bpb": 0.220357, "kept": false},
+    {"name": "HYP2 Xavier init", "bpb": 0.10023, "kept": true}
+  ]
+}
