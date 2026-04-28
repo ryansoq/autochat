@@ -9,19 +9,20 @@
   "current_hypothesis": null,
   "current_log": null,
   "last_result": {
-    "hypothesis": "HYP4 lr 0.002 → 0.001",
-    "bpb": 0.101982,
-    "accuracy": "92/92",
+    "hypothesis": "HYP6 d_model 128 (heads 8)",
+    "bpb": 0.124719,
+    "accuracy": "91/92",
     "kept": false,
     "verdict": "REVERT",
-    "reason": "+1.8% vs HYP2. Converges faster (90 vs 110 ep) but cosine floor reached before further polish; lr=0.002 and lr=0.001 settle similarly.",
-    "log": "/tmp/autochat-hyp4-1777358597.log",
-    "epochs_to_converge": 90
+    "reason": "Underfit at 20-min budget. Larger model (412k → 600k params) → ~30% slower per epoch → only fit 95 ep (HYP2 needed 110). Best mid-train was ep 80 bpb 0.1144. Capacity isn't the bottleneck at this corpus size.",
+    "log": "/tmp/autochat-hyp6-1777365216.log",
+    "epochs_to_converge": null
   },
   "tried_hypotheses": [
     {"name": "HYP1 float32", "bpb": 0.220357, "kept": false},
     {"name": "HYP2 Xavier init", "bpb": 0.10023, "kept": true},
     {"name": "HYP3 tied embedding", "bpb": 0.101888, "kept": false},
-    {"name": "HYP4 lr=0.001", "bpb": 0.101982, "kept": false}
+    {"name": "HYP4 lr=0.001", "bpb": 0.101982, "kept": false},
+    {"name": "HYP6 d_model 128", "bpb": 0.124719, "kept": false}
   ]
 }
